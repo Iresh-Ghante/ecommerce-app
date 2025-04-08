@@ -2,26 +2,27 @@
 *.class
 *.jar
 *.war
-*.log
-*.iml
 
-# Build
-/target/
-/out/
-/build/
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
 
-# IDE
+# IntelliJ
 .idea/
-/*.iws
-*.ipr
 *.iml
+*.ipr
+*.iws
+
+# VSCode
+.vscode/
+
+# Logs
+logs/
+*.log
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-
-# Node
-node_modules/
