@@ -1,14 +1,20 @@
 package com.ecommerce.user.service;
 
-import java.util.HashSet;
-import java.util.Optional;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.ecommerce.user.dto.AuthResponse;
+import com.ecommerce.user.dto.LoginRequest;
+import com.ecommerce.user.dto.RegisterRequest;
+import com.ecommerce.user.model.Role;
 import com.ecommerce.user.model.User;
+import com.ecommerce.user.repository.RoleRepository;
 import com.ecommerce.user.repository.UserRepository;
+import com.ecommerce.user.security.CustomUserDetails;
 import com.ecommerce.user.security.JwtUtil;
 
 @Service
@@ -19,35 +25,56 @@ public class AuthService {
 
 	@Autowired
 	private JwtUtil jwtUtil;
+	
+	@Autowired
+	private RoleRepository roleRepository;
 
 	@Autowired
 	private BCryptPasswordEncoder passwordEncoder;
 
-	public String registerUser(String username, String password, String role) {
-		if (userRepository.findByUsername(username).isPresent()) {
-			throw new RuntimeException("Username already exist");
-		}
-
-		User user = new User();
-		user.setUsername(username);
-		user.setPassword(passwordEncoder.encode(password));
-
-		HashSet<String> roles = new HashSet<>();
-		roles.add(role);
-		user.setRoles(roles);
-
-		userRepository.save(user);
-
-		return "User Registered Sucessfully";
-	}
-	
-	public String loginUser(String username, String password) {
-        Optional<User> user = userRepository.findByUsername(username);
-
-        if (user.isPresent() && passwordEncoder.matches(password, user.get().getPassword())) {
-            return jwtUtil.generateToken(username, user.get().getRoles());
+	public AuthResponse register(RegisterRequest request) {
+        // Check if user already exists
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already in use");
         }
-        throw new RuntimeException("Invalid username or password");
+
+        // Create user and assign default ROLE_USER
+        Role userRole = roleRepository.findByName("ROLE_USER")
+                .orElseGet(() -> roleRepository.save(new Role(null, "ROLE_USER")));
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.getRoles().add(userRole);
+
+        userRepository.save(user);
+
+        // Generate tokens
+        UserDetails userDetails = new CustomUserDetails(user);
+        String accessToken = jwtUtil.generateToken(userDetails);
+        String refreshToken = jwtUtil.generateToken(userDetails); // refresh logic added later
+
+        List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+
+        return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        UserDetails userDetails = new CustomUserDetails(user);
+        String accessToken = jwtUtil.generateToken(userDetails);
+        String refreshToken = jwtUtil.generateToken(userDetails);
+
+        List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+
+        return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
     }
 	
 }
