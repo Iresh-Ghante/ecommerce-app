@@ -1,8 +1,10 @@
 package com.ecommerce.user.service;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.ecommerce.user.dto.AuthResponse;
 import com.ecommerce.user.dto.LoginRequest;
 import com.ecommerce.user.dto.RegisterRequest;
+import com.ecommerce.user.dto.TokenRefreshRequest;
 import com.ecommerce.user.model.Role;
 import com.ecommerce.user.model.User;
 import com.ecommerce.user.repository.RoleRepository;
@@ -28,6 +31,9 @@ public class AuthService {
 	
 	@Autowired
 	private RoleRepository roleRepository;
+	
+	@Autowired
+	private RedisTemplate<String, String> redisTemplate;
 
 	@Autowired
 	private BCryptPasswordEncoder passwordEncoder;
@@ -55,6 +61,8 @@ public class AuthService {
         String accessToken = jwtUtil.generateToken(userDetails);
         String refreshToken = jwtUtil.generateToken(userDetails); // refresh logic added later
 
+        
+        
         List<String> roles = user.getRoles().stream().map(Role::getName).toList();
 
         return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
@@ -70,11 +78,57 @@ public class AuthService {
 
         UserDetails userDetails = new CustomUserDetails(user);
         String accessToken = jwtUtil.generateToken(userDetails);
-        String refreshToken = jwtUtil.generateToken(userDetails);
+        String refreshToken = jwtUtil.generateRefreshToken(userDetails);
+        
+        
+     // Store refresh token in Redis
+        redisTemplate.opsForValue().set("refresh_token:" + userDetails.getUsername(), refreshToken, 7, TimeUnit.DAYS);
+
 
         List<String> roles = user.getRoles().stream().map(Role::getName).toList();
 
         return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
     }
+    
+    public AuthResponse refreshToken(TokenRefreshRequest request) {
+        String refreshToken = request.getRefreshToken();
+        String userEmail = jwtUtil.getUsername(refreshToken);
+
+        if (userEmail == null) throw new RuntimeException("Invalid refresh token");
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        UserDetails userDetails = new CustomUserDetails(user);
+        if (!jwtUtil.isTokenValid(refreshToken, userDetails)) {
+            throw new RuntimeException("Refresh token is invalid or expired");
+        }
+
+        // Optional: check if token matches the one stored in DB
+        String storedToken = redisTemplate.opsForValue().get("refresh_token:" + userEmail);
+        if (!refreshToken.equals(storedToken)) {
+            throw new RuntimeException("Token has been revoked or reused");
+        }
+
+        String newAccessToken = jwtUtil.generateToken(userDetails);
+        String newRefreshToken = jwtUtil.generateRefreshToken(userDetails); // Optionally generate a new one
+
+        // Store refresh token in Redis
+        redisTemplate.opsForValue().set("refresh_token:" + userDetails.getUsername(), refreshToken, 7, TimeUnit.DAYS);
+
+        List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+        return new AuthResponse(newAccessToken, newRefreshToken, user.getUsername(), roles);
+    }
+
+    public void logout(String refreshToken) {
+        String userEmail = jwtUtil.getUsername(refreshToken);
+        if (userEmail != null) {
+            User user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            redisTemplate.delete("refresh_token:" + userEmail); // Invalidate stored refresh token
+            userRepository.save(user);
+        }
+    }
+
 	
 }

@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ecommerce.user.dto.AuthResponse;
 import com.ecommerce.user.dto.LoginRequest;
+import com.ecommerce.user.dto.LogoutRequest;
 import com.ecommerce.user.dto.RegisterRequest;
+import com.ecommerce.user.dto.TokenRefreshRequest;
 import com.ecommerce.user.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -31,6 +33,18 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
+    
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@RequestBody TokenRefreshRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request));
+    }
+    
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody LogoutRequest request) {
+    	authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok("Logged out successfully");
+    }
+    
     
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/data")

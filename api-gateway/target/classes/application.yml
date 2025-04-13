@@ -10,31 +10,33 @@ spring:
     gateway:
       routes:
       - id: user-service
-        uri: lb:// USER-SERVICE
+        uri: lb://USER-SERVICE
         predicates:
-        - path=/api/users/**
+          - Path=/auth/**
 
-      - id: producte-service
+      - id: product-service
         uri: lb://PRODUCT-SERVICE
         predicates:
-        - path=/api/products/**
+          - Path=/api/products/**
 
       - id: order-service
         uri: lb://ORDER-SERVICE
         predicates:
-        - path=/api/orders/**
+          - Path=/api/orders/**
 
       - id: inventory-service
         uri: lb://INVENTORY-SERVICE
         predicates:
-        - path=/api/inventory/**
+          - Path=/api/inventory/**
 
       - id: payment-service
         uri: lb://PAYMENT-SERVICE
         predicates:
-        - path=/api/payments/**
+          - Path=/api/payments/**
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://localhost:8761/eureka
+    register-with-eureka: true
+    fetch-registry: true

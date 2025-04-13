@@ -15,7 +15,9 @@ import io.jsonwebtoken.security.Keys;
 public class JwtUtil {
     private static final String SECRET_KEY = "bG9uZy1zZWN1cmUta2V5LWhlcmUtbG9uZy1zZWN1cmUta2V5LWhlcmU="; // At least 32 characters required
     
-    private static final long EXPIRATION_TIME = 1000 * 60 * 60; // 1 hour
+    private static final long EXPIRATION_TIME = 1000 * 60 ;
+
+	private static final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60;
 
     public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
@@ -23,6 +25,15 @@ public class JwtUtil {
             .claim("authorities", userDetails.getAuthorities())
             .setIssuedAt(new Date())
             .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+            .signWith(getSignKey(), SignatureAlgorithm.HS256)
+            .compact();
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        return Jwts.builder()
+            .setSubject(userDetails.getUsername())
+            .setIssuedAt(new Date(System.currentTimeMillis()))
+            .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION)) // e.g., 7 days
             .signWith(getSignKey(), SignatureAlgorithm.HS256)
             .compact();
     }
