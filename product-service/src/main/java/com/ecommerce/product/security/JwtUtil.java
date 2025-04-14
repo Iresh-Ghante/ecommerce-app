@@ -1,26 +1,24 @@
 package com.ecommerce.product.security;
 
-import javax.crypto.SecretKey;
+import java.security.Key;
 
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtUtil {
     private static final String SECRET_KEY = "bG9uZy1zZWN1cmUta2V5LWhlcmUtbG9uZy1zZWN1cmUta2V5LWhlcmU="; // At least 32 characters required
-    private static final SecretKey SIGNING_KEY = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
-
+    
     // Extract Claims
     public Claims extractClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(SIGNING_KEY) // ✅ Using SecretKey properly
+    	return Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     // Extract username from token
@@ -31,6 +29,11 @@ public class JwtUtil {
     public boolean hasRole(String token, String role) {
         Claims claims = extractClaims(token);
         return claims.get("roles", java.util.List.class).contains(role);
+    }
+    
+    private Key getSignKey() {
+        byte[] keyBytes = SECRET_KEY.getBytes();
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
 }

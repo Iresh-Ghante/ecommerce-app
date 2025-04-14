@@ -1,1 +1,15 @@
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\client\ProductClient.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\config\SecurityConfig.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\controller\OrderController.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\dto\OrderItemDto.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\dto\OrderItemRequest.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\dto\OrderPlacedEvent.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\dto\OrderRequest.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\dto\OrderResponse.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\dto\ProductResponse.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\model\Order.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\model\OrderItem.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\model\OrderStatus.java
 D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\OrderServiceApplication.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\repository\OrderRepository.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\order-service\src\main\java\com\ecommerce\order\service\OrderService.java

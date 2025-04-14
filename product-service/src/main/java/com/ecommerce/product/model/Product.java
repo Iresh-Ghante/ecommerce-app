@@ -1,18 +1,19 @@
 package com.ecommerce.product.model;
 
+import java.math.BigDecimal;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
-
 @Entity
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "products")
+@Builder
 public class Product {
 
     @Id
@@ -21,11 +22,14 @@ public class Product {
 
     private String name;
 
+    @Column(length = 1000)
     private String description;
 
-    private double price;
+    private BigDecimal price;
 
-    private int stock;
+    private Integer stock;
 
     private String category;
+
+    private String imageUrl;
 }

@@ -1,27 +1,38 @@
 package com.ecommerce.product.controller;
 
-import com.ecommerce.product.model.Product;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.ecommerce.product.dto.ProductRequest;
+import com.ecommerce.product.dto.ProductResponse;
 import com.ecommerce.product.security.JwtUtil;
 import com.ecommerce.product.service.ProductService;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/products")
+@RequiredArgsConstructor
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/admin/add")
-    public ResponseEntity<Product> addProduct(@RequestBody Product product,
+    public ResponseEntity<ProductResponse> addProduct(@RequestBody @Valid ProductRequest product,
                                               HttpServletRequest request) {
         String token = (String) request.getAttribute("token");
         if (!jwtUtil.hasRole(token, "ADMIN")) {
@@ -31,8 +42,8 @@ public class ProductController {
     }
 
     @PutMapping("/admin/update/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id,
-                                                 @RequestBody Product product,
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id,
+                                                 @RequestBody @Valid ProductRequest product,
                                                  HttpServletRequest request) {
         String token = (String) request.getAttribute("token");
         if (!jwtUtil.hasRole(token, "ADMIN")) {
@@ -42,14 +53,17 @@ public class ProductController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<List<Product>> getAllProducts() {
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProduct(@PathVariable Long id) {
-        return productService.getProductById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ProductResponse> getProduct(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
+    }
+    
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductResponse>> searchProducts(@RequestParam String name) {
+        return ResponseEntity.ok(productService.searchByName(name));
     }
 }

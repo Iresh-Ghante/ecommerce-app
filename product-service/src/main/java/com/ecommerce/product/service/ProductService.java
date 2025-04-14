@@ -1,13 +1,16 @@
 package com.ecommerce.product.service;
 
-import com.ecommerce.product.kafka.ProductEventPublish;
-import com.ecommerce.product.model.Product;
-import com.ecommerce.product.repository.ProductRepository;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import com.ecommerce.product.dto.ProductRequest;
+import com.ecommerce.product.dto.ProductResponse;
+import com.ecommerce.product.kafka.ProductEventPublish;
+import com.ecommerce.product.model.Product;
+import com.ecommerce.product.repository.ProductRepository;
 
 @Service
 public class ProductService {
@@ -18,13 +21,23 @@ public class ProductService {
     @Autowired
     private ProductEventPublish eventPublisher;
 
-    public Product addProduct(Product product) {
-    	Product saved = productRepository.save(product);
-        eventPublisher.publishProductCreated(saved);
-        return saved;
+    public ProductResponse addProduct(ProductRequest request) {
+    	Product product = Product.builder()
+                .name(request.getName())
+                .description(request.getDescription())
+                .price(request.getPrice())
+                .stock(request.getStock())
+                .category(request.getCategory())
+                .imageUrl(request.getImageUrl())
+                .build();
+    	
+    	product = productRepository.save(product);
+        eventPublisher.publishProductCreated(product);
+        
+        return mapToResponse(product);
     }
 
-    public Product updateProduct(Long id, Product updatedProduct) {
+    public ProductResponse updateProduct(Long id, ProductRequest updatedProduct) {
         Product existing = productRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Product not found"));
         existing.setName(updatedProduct.getName());
@@ -34,14 +47,35 @@ public class ProductService {
         existing.setCategory(updatedProduct.getCategory());
         Product saved = productRepository.save(existing);
         eventPublisher.publishProductUpdated(saved);
-        return saved;
+        return mapToResponse(saved);
     }
 
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
-    public Optional<Product> getProductById(Long id) {
-        return productRepository.findById(id);
+    public ProductResponse getProductById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        return mapToResponse(product);
+    }
+    
+    public List<ProductResponse> searchByName(String name) {
+    	return productRepository.findByNameContainingIgnoreCase(name)
+    			.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+    
+    private ProductResponse mapToResponse(Product product) {
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .stock(product.getStock())
+                .category(product.getCategory())
+                .imageUrl(product.getImageUrl())
+                .build();
     }
 }

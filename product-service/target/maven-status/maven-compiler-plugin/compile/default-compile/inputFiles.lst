@@ -1,1 +1,12 @@
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\config\SecurityConfig.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\controller\GlobalExceptionHandler.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\controller\ProductController.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\dto\ProductRequest.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\dto\ProductResponse.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\kafka\ProductEventPublish.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\model\Product.java
 D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\ProductServiceApplication.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\repository\ProductRepository.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\security\JwtAuthFilter.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\security\JwtUtil.java
+D:\Programs\STS\Projects\E-commerce\ecommerce-app\product-service\src\main\java\com\ecommerce\product\service\ProductService.java

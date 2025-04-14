@@ -3,7 +3,6 @@ package com.ecommerce.gateway.security;
 import java.security.Key;
 import java.util.Date;
 
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
