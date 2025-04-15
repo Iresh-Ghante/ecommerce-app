@@ -1,33 +1,30 @@
 package com.ecommerce.payment.config;
 
-import javax.crypto.spec.SecretKeySpec;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.ecommerce.payment.security.JwtAuthFilter;
 
 @Configuration
-@EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+	private final JwtAuthFilter authFilter;
+
+	public SecurityConfig(JwtAuthFilter authFilter) {
+		this.authFilter = authFilter;
+	}
+
+	@Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().authenticated()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt());
-
+                .requestMatchers("/api/payments/**").authenticated()  // All payment-related endpoints require authentication
+                .anyRequest().permitAll()
+                )
+            .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
-    }
-    
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        String secretKey = "bG9uZy1zZWN1cmUta2V5LWhlcmUtbG9uZy1zZWN1cmUta2V5LWhlcmU="; // use proper key management in production
-        return NimbusJwtDecoder.withSecretKey(new SecretKeySpec(secretKey.getBytes(), "HmacSHA256")).build();
     }
 }

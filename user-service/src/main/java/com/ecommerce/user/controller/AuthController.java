@@ -5,6 +5,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,46 +18,60 @@ import com.ecommerce.user.service.AuthService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
-	
+
     private final AuthService authService;
 
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> register(@RequestBody @Valid RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+        log.info("Register attempt for email: {}", request.getEmail());
+        AuthResponse response = authService.register(request);
+        log.info("User registered successfully: {}", response.getUsername());
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+        log.info("Login attempt for email: {}", request.getEmail());
+        AuthResponse response = authService.login(request);
+        log.info("Login successful for: {}", response.getUsername());
+        return ResponseEntity.ok(response);
     }
-    
+
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@RequestBody TokenRefreshRequest request) {
-        return ResponseEntity.ok(authService.refreshToken(request));
+    public ResponseEntity<AuthResponse> refresh(@RequestBody @Valid TokenRefreshRequest request) {
+        log.debug("Token refresh requested");
+        AuthResponse response = authService.refreshToken(request);
+        log.info("Token refreshed for: {}", response.getUsername());
+        return ResponseEntity.ok(response);
     }
-    
+
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestBody LogoutRequest request) {
-    	authService.logout(request.getRefreshToken());
+    public ResponseEntity<String> logout(@RequestBody @Valid LogoutRequest request, @RequestHeader("Authorization") String authHeader) {
+        log.info("Logout request received");
+        log.info(authHeader);
+        authService.logout(request.getRefreshToken(), authHeader);
+        log.info("User logged out and refresh token revoked");
         return ResponseEntity.ok("Logged out successfully");
     }
-    
-    
+
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/data")
-    public String getAdminData() {
-        return "Only admins can see this";
+    public ResponseEntity<String> getAdminData() {
+        log.info("Admin data accessed");
+        return ResponseEntity.ok("Only admins can see this");
     }
 
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @GetMapping("/user/data")
-    public String getUserData() {
-        return "User or Admin can see this";
+    public ResponseEntity<String> getUserData() {
+        log.info("User data accessed");
+        return ResponseEntity.ok("User or Admin can see this");
     }
-
 }
-

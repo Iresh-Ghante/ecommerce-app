@@ -13,15 +13,19 @@ import com.ecommerce.payment.model.PaymentStatus;
 import com.ecommerce.payment.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
 
     public PaymentResponse processPayment(PaymentRequest request, String userEmail) {
-        // Simulate a successful payment for now (mocking payment gateway)
+        log.info("Processing payment for orderId={}, user={}", request.getOrderId(), userEmail);
+
+        // Simulate successful payment (integration with actual gateway comes later)
         Payment payment = Payment.builder()
                 .orderId(request.getOrderId())
                 .userEmail(userEmail)
@@ -31,11 +35,21 @@ public class PaymentService {
                 .build();
 
         Payment saved = paymentRepository.save(payment);
+        log.info("Payment processed successfully. PaymentId={}, status={}", saved.getId(), saved.getStatus());
+
         return mapToResponse(saved);
     }
 
     public List<PaymentResponse> getUserPayments(String userEmail) {
-        return paymentRepository.findByUserEmail(userEmail).stream()
+        log.info("Fetching payment history for user={}", userEmail);
+
+        List<Payment> payments = paymentRepository.findByUserEmail(userEmail);
+
+        if (payments.isEmpty()) {
+            throw new RuntimeException("No payments found for user: " + userEmail);
+        }
+
+        return payments.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

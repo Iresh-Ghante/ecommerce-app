@@ -3,7 +3,6 @@ package com.ecommerce.user.service;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,115 +19,137 @@ import com.ecommerce.user.repository.UserRepository;
 import com.ecommerce.user.security.CustomUserDetails;
 import com.ecommerce.user.security.JwtUtil;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
-	@Autowired
-	private UserRepository userRepository;
-
-	@Autowired
-	private JwtUtil jwtUtil;
-	
-	@Autowired
-	private RoleRepository roleRepository;
-	
-	@Autowired
-	private RedisTemplate<String, String> redisTemplate;
-
-	@Autowired
-	private BCryptPasswordEncoder passwordEncoder;
+	private final UserRepository userRepository;
+	private final RoleRepository roleRepository;
+	private final JwtUtil jwtUtil;
+	private final RedisTemplate<String, String> redisTemplate;
+	private final RedisService redisService;
+	private final BCryptPasswordEncoder passwordEncoder;
 
 	public AuthResponse register(RegisterRequest request) {
-        // Check if user already exists
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already in use");
-        }
+		if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+			throw new RuntimeException("Email already in use");
+		}
 
-        // Create user and assign default ROLE_USER
-        Role userRole = roleRepository.findByName("ROLE_USER")
-                .orElseGet(() -> roleRepository.save(new Role(null, "ROLE_USER")));
+		Role userRole = roleRepository.findByName("ROLE_USER")
+				.orElseGet(() -> roleRepository.save(new Role(null, "ROLE_USER")));
 
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.getRoles().add(userRole);
+		User user = new User();
+		user.setUsername(request.getUsername());
+		user.setEmail(request.getEmail());
+		user.setPassword(passwordEncoder.encode(request.getPassword()));
+		user.getRoles().add(userRole);
 
-        userRepository.save(user);
+		userRepository.save(user);
 
-        // Generate tokens
-        UserDetails userDetails = new CustomUserDetails(user);
-        String accessToken = jwtUtil.generateToken(userDetails);
-        String refreshToken = jwtUtil.generateToken(userDetails); // refresh logic added later
+		UserDetails userDetails = new CustomUserDetails(user);
+		String accessToken = jwtUtil.generateToken(userDetails);
+		String refreshToken = jwtUtil.generateRefreshToken(userDetails);
 
-        
-        
-        List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+		redisTemplate.opsForValue().set("refresh_token:" + user.getEmail(), refreshToken, 7, TimeUnit.DAYS);
 
-        return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
-    }
+		List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+		log.info("User registered successfully: {}", user.getEmail());
 
-    public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+		return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
+	}
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
+	public AuthResponse login(LoginRequest request) {
+		User user = userRepository.findByEmail(request.getEmail())
+				.orElseThrow(() -> new RuntimeException("User not found"));
 
-        UserDetails userDetails = new CustomUserDetails(user);
-        String accessToken = jwtUtil.generateToken(userDetails);
-        String refreshToken = jwtUtil.generateRefreshToken(userDetails);
-        
-        
-     // Store refresh token in Redis
-        redisTemplate.opsForValue().set("refresh_token:" + userDetails.getUsername(), refreshToken, 7, TimeUnit.DAYS);
+		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+			throw new RuntimeException("Invalid credentials");
+		}
 
+		UserDetails userDetails = new CustomUserDetails(user);
+		String accessToken = jwtUtil.generateToken(userDetails);
+		String refreshToken = jwtUtil.generateRefreshToken(userDetails);
 
-        List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+		redisTemplate.opsForValue().set("refresh_token:" + user.getEmail(), refreshToken, 7, TimeUnit.DAYS);
 
-        return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
-    }
-    
-    public AuthResponse refreshToken(TokenRefreshRequest request) {
-        String refreshToken = request.getRefreshToken();
-        String userEmail = jwtUtil.getUsername(refreshToken);
+		List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+		log.info("User logged in successfully: {}", user.getEmail());
 
-        if (userEmail == null) throw new RuntimeException("Invalid refresh token");
+		return new AuthResponse(accessToken, refreshToken, user.getUsername(), roles);
+	}
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+	public AuthResponse refreshToken(TokenRefreshRequest request) {
+		String refreshToken = request.getRefreshToken();
+		String userEmail = jwtUtil.getUsername(refreshToken);
 
-        UserDetails userDetails = new CustomUserDetails(user);
-        if (!jwtUtil.isTokenValid(refreshToken, userDetails)) {
-            throw new RuntimeException("Refresh token is invalid or expired");
-        }
+		if (userEmail == null) {
+			throw new RuntimeException("Invalid refresh token");
+		}
 
-        // Optional: check if token matches the one stored in DB
-        String storedToken = redisTemplate.opsForValue().get("refresh_token:" + userEmail);
-        if (!refreshToken.equals(storedToken)) {
-            throw new RuntimeException("Token has been revoked or reused");
-        }
+		User user = userRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new RuntimeException("User not found"));
 
-        String newAccessToken = jwtUtil.generateToken(userDetails);
-        String newRefreshToken = jwtUtil.generateRefreshToken(userDetails); // Optionally generate a new one
+		UserDetails userDetails = new CustomUserDetails(user);
 
-        // Store refresh token in Redis
-        redisTemplate.opsForValue().set("refresh_token:" + userDetails.getUsername(), refreshToken, 7, TimeUnit.DAYS);
+		if (!jwtUtil.isTokenValid(refreshToken, userDetails)) {
+			throw new RuntimeException("Refresh token is invalid or expired");
+		}
 
-        List<String> roles = user.getRoles().stream().map(Role::getName).toList();
-        return new AuthResponse(newAccessToken, newRefreshToken, user.getUsername(), roles);
-    }
+		String storedToken = redisTemplate.opsForValue().get("refresh_token:" + userEmail);
+		if (!refreshToken.equals(storedToken)) {
+			throw new RuntimeException("Refresh token reuse detected or revoked");
+		}
 
-    public void logout(String refreshToken) {
-        String userEmail = jwtUtil.getUsername(refreshToken);
-        if (userEmail != null) {
-            User user = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            redisTemplate.delete("refresh_token:" + userEmail); // Invalidate stored refresh token
-            userRepository.save(user);
-        }
-    }
+		String newAccessToken = jwtUtil.generateToken(userDetails);
+		String newRefreshToken = jwtUtil.generateRefreshToken(userDetails);
 
+		redisTemplate.opsForValue().set("refresh_token:" + userEmail, newRefreshToken, 7, TimeUnit.DAYS);
+
+		List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+		log.info("Token refreshed successfully for user: {}", userEmail);
+
+		return new AuthResponse(newAccessToken, newRefreshToken, user.getUsername(), roles);
+	}
+
+	public void logout(String accessToken, String refreshToken) {
+	    if (refreshToken == null || refreshToken.isBlank()) {
+	        throw new IllegalArgumentException("Refresh token must not be empty");
+	    }
+	    
+	    accessToken = stripBearerPrefix(accessToken);
+	    refreshToken = stripBearerPrefix(refreshToken);
+	    
+	    String userEmail = jwtUtil.getUsername(refreshToken);
+
+	    if (userEmail != null) {
+	        // Blacklist Refresh Token
+	        long refreshTtl = jwtUtil.getExpirationDuration(refreshToken);
+	        redisService.blacklistToken(refreshToken, refreshTtl);
+
+	        // Blacklist Access Token
+	        if (accessToken != null && !accessToken.isBlank()) {
+	            long accessTtl = jwtUtil.getExpirationDuration(accessToken);
+	            redisService.blacklistToken(accessToken, accessTtl);
+	        }
+
+	        // Remove stored refresh token if you're saving it in Redis or DB
+	        redisTemplate.delete("refresh_token:" + userEmail);
+
+	        log.info("User logged out. Tokens revoked for: {}", userEmail);
+	    } else {
+	        throw new IllegalArgumentException("Invalid refresh token");
+	    }
+	}
 	
+	private String stripBearerPrefix(String token) {
+	    if (token != null && token.startsWith("Bearer ")) {
+	        return token.substring(7);
+	    }
+	    return token;
+	}
+
 }

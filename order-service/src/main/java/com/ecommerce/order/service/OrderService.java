@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.ecommerce.order.client.ProductClient;
 import com.ecommerce.order.dto.OrderItemDto;
@@ -22,15 +23,18 @@ import com.ecommerce.order.model.OrderStatus;
 import com.ecommerce.order.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductClient productClient;
     private final KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
 
+    @Transactional
     public OrderResponse placeOrder(OrderRequest request, String userEmail) {
         List<OrderItem> items = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
@@ -39,6 +43,8 @@ public class OrderService {
             ProductResponse product = productClient.getProductById(itemReq.getProductId());
 
             if (product.getStock() < itemReq.getQuantity()) {
+                log.error("Not enough stock for product {}. Requested: {} Available: {}", 
+                          product.getName(), itemReq.getQuantity(), product.getStock());
                 throw new RuntimeException("Not enough stock for product " + product.getName());
             }
 
@@ -74,10 +80,12 @@ public class OrderService {
 
         kafkaTemplate.send("order-placed-topic", event);
         
+        log.info("Order placed successfully for user: {}", userEmail);
         return mapToResponse(saved);
     }
 
     public List<OrderResponse> getOrdersForUser(String userEmail) {
+        log.info("Fetching orders for user: {}", userEmail);
         return orderRepository.findByUserEmail(userEmail).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -101,4 +109,3 @@ public class OrderService {
                 .build();
     }
 }
-

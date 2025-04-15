@@ -6,8 +6,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import com.ecommerce.order.dto.ProductResponse;
 
-@FeignClient(name = "product-service", url = "http://localhost:8082")
+@FeignClient(name = "product-service", url = "http://localhost:8082", fallback = ProductClientFallback.class)
 public interface ProductClient {
+    
     @GetMapping("/api/products/{id}")
     ProductResponse getProductById(@PathVariable("id") Long id);
 }

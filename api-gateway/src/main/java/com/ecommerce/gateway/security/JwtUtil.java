@@ -1,47 +1,53 @@
 package com.ecommerce.gateway.security;
 
 import java.security.Key;
-import java.util.Date;
+import java.util.Base64;
 
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class JwtUtil {
-    private static final String SECRET_KEY = "bG9uZy1zZWN1cmUta2V5LWhlcmUtbG9uZy1zZWN1cmUta2V5LWhlcmU="; // At least 32 characters required
-    
+
+    private static final String SECRET_KEY = "bG9uZy1zZWN1cmUta2V5LWhlcmUtbG9uZy1zZWN1cmUta2V5LWhlcmU=";
+
     public boolean validateToken(String token) {
         try {
-            Claims claims = getClaims(token);
-            Date expiration = claims.getExpiration();
-            return !expiration.before(new Date()); // Valid if not expired
-        } catch (Exception e) {
-            return false; // Invalid signature, expired, malformed, etc.
+            Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token);
+            return true;
+        } catch (JwtException e) {
+            log.warn("Invalid JWT: {}", e.getMessage());
+            return false;
         }
     }
 
-
-    public String getUsername(String token) {
-        return getClaims(token).getSubject();
+    public String extractUsername(String token) {
+        try {
+            return extractClaims(token).getSubject();
+        } catch (Exception e) {
+            log.warn("Failed to extract username from token: {}", e.getMessage());
+            return null;
+        }
     }
 
-    private boolean isExpired(String token) {
-        return getClaims(token).getExpiration().before(new Date());
-    }
-
-    private Claims getClaims(String token) {
+    public Claims extractClaims(String token) {
         return Jwts.parserBuilder()
-            .setSigningKey(getSignKey())
-            .build()
-            .parseClaimsJws(token)
-            .getBody();
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     private Key getSignKey() {
-        byte[] keyBytes = SECRET_KEY.getBytes();
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET_KEY));
     }
 }

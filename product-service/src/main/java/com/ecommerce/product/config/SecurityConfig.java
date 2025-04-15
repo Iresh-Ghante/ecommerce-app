@@ -12,20 +12,19 @@ import com.ecommerce.product.security.JwtAuthFilter;
 @Configuration
 public class SecurityConfig {
 
-	@Autowired
-	private JwtAuthFilter authFilter;
-	
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable())
-		.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/api/products/admin/**").hasRole("ADMIN")
-				.requestMatchers("/api/products/**").authenticated()
-				.anyRequest().permitAll()
-				)
-		.addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
-		
-		return http.build();
-	}
-	
+    @Autowired
+    private JwtAuthFilter authFilter;
+    
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/products/admin/**").hasRole("ADMIN")  // Admin endpoints require ADMIN role
+                .requestMatchers("/api/products/**").authenticated()  // All product-related endpoints require authentication
+                .anyRequest().permitAll()  // All other requests are permitted without authentication
+            )
+            .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);  // Apply JWT filter before other filters
+        
+        return http.build();
+    }
 }
